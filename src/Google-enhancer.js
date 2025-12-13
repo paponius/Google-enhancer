@@ -62,6 +62,9 @@ var whenPageReady = (handler, state = 'complete') => {
 	if (DEBUG) { console.log("Google-enhancer: whenPageReady(): page ready (readyState = '" + state + "')"); }
 	handler();
 };
+// tests if events are cached and then re-sent
+window.addEventListener('DOMContentLoaded', () => { console.log('event: DOMContentLoaded received'); });
+window.addEventListener('load', () => { console.log('event: load received'); });
 
 
 whenPageReady(init_Google_full_result_titles);

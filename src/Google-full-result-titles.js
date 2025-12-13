@@ -15,7 +15,7 @@
      - on a second line
      - hover over the result card
 
-   This UserScript needs complete access to a cross-origin resource: select "Always allow All".
+   This UserScript needs complete access to a cross-origin resource: select "Always allow All Domains".
    As it needs to access any site listed on Google results to get its title.
 
    Features
@@ -229,6 +229,7 @@ function getLinkFromParent(el) {
 async function processTitle(elTitle) {
 	if (elTitle.dataset.frtTitle !== undefined) { return; }
 	if (DEBUG) { console.log('[Google-full-result-titles.js] *** new entry', elTitle); }
+	injectPanel(elTitle);
 	if (!elTitle.textContent.endsWith('...')) { // sometimes there is no space before
 		elTitle.dataset.frtTitle = '';
 		if (DEBUG) { console.log('[Google-full-result-titles.js] ... no ellipses'); }

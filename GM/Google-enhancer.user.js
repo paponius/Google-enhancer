@@ -13,6 +13,7 @@
 // @grant          GM_registerMenuCommand
 
 // @require        https://github.com/paponius/Google-enhancer/raw/master/lib/fetchGM.js
+// @require        https://github.com/paponius/UserScripts-papo/raw/master/lib/ControlPanel.js
 // @require        https://github.com/paponius/Google-enhancer/raw/master/src/Google-full-result-titles.js
 // @require        https://github.com/paponius/Google-enhancer/raw/master/src/Google-enhancer.js?v0.9
 
