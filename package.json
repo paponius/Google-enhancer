@@ -1,0 +1,34 @@
+{
+  "name": "google-enhancer",
+  "version": "1.0.0",
+  "description": "whatever",
+  "keywords": [
+    "google",
+    "enhancer"
+  ],
+  "homepage": "https://github.com/paponius/Google-enhancer#readme",
+  "bugs": {
+    "url": "https://github.com/paponius/Google-enhancer/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paponius/Google-enhancer.git"
+  },
+  "license": "ISC",
+  "author": "papo",
+  "type": "commonjs",
+  "main": "src\\Google-enhancer.js",
+  "directories": {
+    "doc": "doc",
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "none"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "globals": "^16.5.0"
+  }
+}

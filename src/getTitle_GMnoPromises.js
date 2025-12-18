@@ -10,11 +10,11 @@ async function getTitle_GMnoPromises(uri) {
 	var contType = await getTypeFromHead_GM(uri).catch(err => {	});
 	// maybe continue to try to get the page if content-type is not present in headers
 	if (!contType) { debugger; console.error('[Google-full-result-titles.js] XHR no content type found:', uri); }
-	if (DEBUG) { console.log('[Google-full-result-titles.js] XHR found Content-Type:', contType[1]); }
+	if (LOG) { console.log('[Google-full-result-titles.js] XHR found Content-Type:', contType[1]); }
 	// todo will see
 	if (contType[1] !== 'text/html' && contType !== null ) { return Promise.reject('not text/html'); }
 	return new Promise((resolve, reject) => {
-		// if (DEBUG) { console.log('[Google-full-result-titles.js] Making XHR: ', uri); }
+		// if (LOG) { console.log('[Google-full-result-titles.js] Making XHR: ', uri); }
 
 		// GM.xmlHttpRequest({
 		// `try` and `if` is just a test. probably does nothing and is useless. 
@@ -29,18 +29,18 @@ async function getTitle_GMnoPromises(uri) {
 			url: uri,
 			onload: response => {
 				// debugger;
-				if (DEBUG) { console.log('[Google-full-result-titles.js] --- XHR received:', uri, response); }
+				if (LOG) { console.log('[Google-full-result-titles.js] --- XHR received:', uri, response); }
 				if (response.status < 200 || response.status > 399) {
 					return reject('bad response: ' + response.status);
 				}
 				// head could be null for non html/xml files (PDF)
 				if (!response.responseXML.head) {
-					if (DEBUG) { console.log('[Google-full-result-titles.js] XHR did not find a head:', uri, response); }
+					if (LOG) { console.log('[Google-full-result-titles.js] XHR did not find a head:', uri, response); }
 					return reject('no head');
 				}
 				let titles = response.responseXML.head.getElementsByTagName('title');
 				if (!titles.length) {
-					if (DEBUG) { console.log('[Google-full-result-titles.js] XHR did not find a title:', uri, response); }
+					if (LOG) { console.log('[Google-full-result-titles.js] XHR did not find a title:', uri, response); }
 					return reject('no title meta');
 				}
 				var title = response.responseXML.head.getElementsByTagName('title')[0].textContent;
@@ -59,9 +59,9 @@ async function getTitle_GMnoPromises(uri) {
 				reject('XHR aborted: '+response.error);
 			}
 		})) { 
-			if (DEBUG) { console.log('[Google-full-result-titles.js] negative:', uri); }
+			if (LOG) { console.log('[Google-full-result-titles.js] negative:', uri); }
 		} } catch (e) {
-			if (DEBUG) { console.log('[Google-full-result-titles.js] err:', uri, e); }
+			if (LOG) { console.log('[Google-full-result-titles.js] err:', uri, e); }
 		}
 	});
 }

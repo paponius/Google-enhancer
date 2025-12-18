@@ -9,7 +9,10 @@
 
 // should be outside of the isolation function, so DEBUG can be used in functions of script files included before this one.
 var DEBUG = ( GM && GM.info.script.name.indexOf('DEBUG') !== -1 );
-
+// optional line
+var DEBUG = ( GM && GM.info.script.name.split('DEBUG:')[1]?.substring(0,1)) || DEBUG;
+var LOG = DEBUG || (GM && GM_info.script.name.includes('LOG'));
+if (DEBUG == 's') { debugger; } // stop at beginning
 
 
 // IIFE can't be used if project consists of multiple modules-files with shared variables.
@@ -21,19 +24,19 @@ var DEBUG = ( GM && GM.info.script.name.indexOf('DEBUG') !== -1 );
 // TODO: Uncaught (in promise) ReferenceError: Cannot access 'window' before initialization
 // Snippet v1.0. determine if running in an iframe
 function isIFrame() {
-	// if (DEBUG) { console.debug('Google-enhancer: host: ', window.location.host); }
+	// if (LOG) { console.debug('Google-enhancer: host: ', window.location.host); }
 	if (window.top !== window.self) {
-		if (DEBUG) { console.log('Google-enhancer: isIFrame(): Running in an iFrame', window.location.host); }
+		if (LOG) { console.log('Google-enhancer: isIFrame(): Running in an iFrame', window.location.host); }
 		return true;
 	}
-	if (DEBUG) { console.log('Google-enhancer: isIFrame(): Not running in an iFrame', window.location.host); }
+	if (LOG) { console.log('Google-enhancer: isIFrame(): Not running in an iFrame', window.location.host); }
 	return false;
 }
 // alternative is: switch (window.location.host) { case 'DOMAINNAME': // main page
 
 // this shouldn't be needed when @noframes meta is used
 // if (isIFrame()) {
-// 	if (DEBUG) { console.log('Google-enhancer: Attempted to start in an iFrame'); }
+// 	if (LOG) { console.log('Google-enhancer: Attempted to start in an iFrame'); }
 // 	return;
 // }
 
@@ -54,12 +57,12 @@ var whenPageReady = (handler, state = 'complete') => {
 
 	if (document.readyState !== 'complete' && (state === 'complete' || document.readyState !== 'interactive')) {
 		window.addEventListener(eventName, () => whenPageReady(handler, state));
-		if (DEBUG) { console.log("Google-enhancer: whenPageReady(): page not ready. (readyState = '" + document.readyState + ', desired: ' + state);
+		if (LOG) { console.log("Google-enhancer: whenPageReady(): page not ready. (readyState = '" + document.readyState + ', desired: ' + state);
 		}
 		return;
 	}
 
-	if (DEBUG) { console.log("Google-enhancer: whenPageReady(): page ready (readyState = '" + state + "')"); }
+	if (LOG) { console.log("Google-enhancer: whenPageReady(): page ready (readyState = '" + state + "')"); }
 	handler();
 };
 // tests if events are cached and then re-sent
@@ -74,4 +77,4 @@ whenPageReady(init_Google_full_result_titles);
 })();
 
 // ouside of the IIFE wrapper, if code in IIFE "return"-s, this will be still shown
-if (DEBUG) { console.log('Google-enhancer.js: ENDED'); }
+if (LOG) { console.log('Google-enhancer.js: ENDED'); }

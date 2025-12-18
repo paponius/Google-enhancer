@@ -1,3 +1,7 @@
+/* eslint-disable no-debugger */
+/* global GM, GM_registerMenuCommand */ /* from GreaseMonkey */
+/* global fetchGM, GM_xmlhttpRequest, CPPanel, CPControl */ /* from other files of this project */
+
 /* jshint esversion: 9 */
 /* jshint debug: true */
 
@@ -40,9 +44,10 @@
    When the beginning of shown title does not match the obtained, only offer it in hover? second line?
  */
 
+"use strict";
 
 // var DEBUG = DEBUG || ( GM && GM.info.script.name.indexOf('DEBUG') !== -1 );
-var DEBUG; // DEBUG is defined in previously loaded file, but avoid undefined when script is used elsewhere
+var DEBUG, LOG; // DEBUG is defined in previously loaded file, but avoid undefined when script is used elsewhere
 
 const selResults = '.g a h3, #rso a h3, #bes a h3, #kp-wp-tab-cont-overview a h3';
 const selCardsParents = `
@@ -77,13 +82,23 @@ async function getTitle_stream(url) {
 	// todo maybe use the second part of contType, to get encoding and use appropriate text decoder? or ignore UTF16
 	if (contType !== null && contType.split(';')[0].trim() !== 'text/html') {return Promise.reject({m:'unsupported type'});}
 	if (!response.ok) {
-		if (DEBUG) { console.log('[Google-full-result-titles.js] ... XHR did not find the site (response: '+response.status+')', url, response); }
+		if (LOG) { console.log('[Google-full-result-titles.js] ... XHR did not find the site (response: '+response.status+')', url, response); }
 		return Promise.reject({m:'bad response: ' + response.status});
 	}
 
 	for await (const element of tagIterator(response)) {
-		if (DEBUG) { console.debug(element); }
-		if (element.tag === 'title') { response.abortGM(); return Promise.resolve(element.content); }
+		if (DEBUG) { console.debug('[Google-full-result-titles.js] Before HTML decoding: ' + element.content); console.debug(element); }
+		if (element.tag === 'title') {
+// todo it is probably expected that the string from streamer is still html encoded, but check with native streamer if it does not decode too
+// maybe another decoder than TextDecoderStream exists
+// if (element.content.includes('%')) { debugger; }
+			response.abortGM();
+			// - decode HTML string (&amp;, ...)
+			let elHelper = document.createElement("textarea");
+			elHelper.innerHTML = element.content;
+			return Promise.resolve(elHelper.value);
+			// del return Promise.resolve(element.content);
+		}
 		if (element.tag === 'body') { break; }
 	}
 	response.abortGM();
@@ -142,23 +157,23 @@ async function getTitle_stream(url) {
 // returns: {1: <CONTENT-TYPE>, 2: <CHARSET>|undefined}|null
 async function getTypeFromHead_GM(uri) {
 	return new Promise((resolve, reject) => {
-		if (DEBUG) { console.log('[Google-full-result-titles.js] getting HEAD:', uri); }
+		if (LOG) { console.log('[Google-full-result-titles.js] getting HEAD:', uri); }
 		GM_xmlhttpRequest({
 			method: 'HEAD',
 			url: uri,
 			onload: response => {
-				if (DEBUG) { console.log('[Google-full-result-titles.js] XHR received HEAD:', response); }
+				if (LOG) { console.log('[Google-full-result-titles.js] XHR received HEAD:', response); }
 				var contType = response.responseHeaders.match(/.*content-type\s*:\s*([^;\s\r\n]*)[\s;]*(?:charset\s*=\s*([^\r\n]*))?/i);
 				// maybe allow to resolve null as no content-type defined
 				// if (contType === null) { return reject('no content-type'); }
 				resolve(contType);
 			},
 			onerror: response => {
-				if (DEBUG) { console.log('[Google-full-result-titles.js] XHR error:', uri, response); }
+				if (LOG) { console.log('[Google-full-result-titles.js] XHR error:', uri, response); }
 				reject('XHR HEAD error: ', response);
 			},
 			onabort: response => {
-				if (DEBUG) { console.log('[Google-full-result-titles.js] XHR aborted:', uri, response); }
+				if (LOG) { console.log('[Google-full-result-titles.js] XHR aborted:', uri, response); }
 				reject('XHR HEAD aborted: ', response);
 			}
 		});
@@ -173,10 +188,10 @@ async function getTitle_GM(uri) {
 	var contType = await getTypeFromHead_GM(uri).catch(err => { console.error(err); });
 	// maybe continue to try to get the page if content-type is not present in headers
 	if (!contType) { debugger; console.error('[Google-full-result-titles.js] ... XHR no content type found:', uri); }
-	if (DEBUG) { console.log('[Google-full-result-titles.js] ... XHR found Content-Type:', contType[1]); }
+	if (LOG) { console.log('[Google-full-result-titles.js] ... XHR found Content-Type:', contType[1]); }
 	// todo will see
 	if (contType[1] !== 'text/html' && contType !== null ) { return Promise.reject({m:'unsupported type'}); }
-	if (DEBUG) { console.log('[Google-full-result-titles.js] ... XHR getting full document'); }
+	if (LOG) { console.log('[Google-full-result-titles.js] ... XHR getting full document'); }
 
 	var response = await GM.xmlHttpRequest({
 		method: 'GET',
@@ -191,19 +206,19 @@ async function getTitle_GM(uri) {
 		return Promise.reject('XHR error/aborted: '+error.error);
 	});
 	return new Promise((resolve, reject) => {
-		if (DEBUG) { console.log('[Google-full-result-titles.js] --- XHR responded:', uri, response); }
+		if (LOG) { console.log('[Google-full-result-titles.js] --- XHR responded:', uri, response); }
 		if (response.status < 200 || response.status > 399) {
-			if (DEBUG) { console.log('[Google-full-result-titles.js] ... XHR did not find the site (response: '+response.status+')', uri, response); }
+			if (LOG) { console.log('[Google-full-result-titles.js] ... XHR did not find the site (response: '+response.status+')', uri, response); }
 			return reject({m:'bad response: ' + response.status});
 		}
 		// head could be null for non html/xml files (PDF)
 		if (!response.responseXML.head) {
-			if (DEBUG) { console.log('[Google-full-result-titles.js] ... XHR did not find a head:', uri, response); }
+			if (LOG) { console.log('[Google-full-result-titles.js] ... XHR did not find a head:', uri, response); }
 			return reject({m:'no head'});
 		}
 		let titles = response.responseXML.head.getElementsByTagName('title');
 		if (!titles.length) {
-			if (DEBUG) { console.log('[Google-full-result-titles.js] ... XHR did not find a title:', uri, response); }
+			if (LOG) { console.log('[Google-full-result-titles.js] ... XHR did not find a title:', uri, response); }
 			return reject({m:'no title meta'});
 		}
 		var title = response.responseXML.head.getElementsByTagName('title')[0].textContent;
@@ -215,7 +230,46 @@ async function getTitle_GM(uri) {
 	});
 }
 
-// return: null if no A with non-empty href found
+
+function getTitleFromURL(url, elTitle) {
+	var title = elTitle.textContent;
+	// trim: sometimes ellipses have a space before, sometimes not
+	if (title.substring(title.length - 3) === '...') { title = title.substring(0, title.length - 3).trim(); }
+	
+	// arTitleFlat: so it can be compared with title in uri path, which is in most cases "flat"
+	// map: remove last character. e.g. "Explainer: Why is ...", the uri would have "explainer-why-is..."
+	// includes: so that more characters to exclude can be used/added later.
+	var arTitleFlat = title.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").split(' ')
+		.map(itm => { if (':'.includes(itm[itm.length - 1])) { return itm.substring(0, itm.length - 1); } else { return itm; }});
+	// remove "..." if it's a last item; disabled. now it's done above
+	// if (arTitleFlat[arTitleFlat.length - 1] === '...') { arTitleFlat.splice(arTitleFlat.length - 1, 1); }
+	// filter: remove empty strings
+	var arUrlDirs = new URL(url).pathname.split('/').filter(itm => itm);
+	if (DEBUG == 5) { debugger; }
+	for (const dir of arUrlDirs) {
+		// if (DEBUG == 5) { debugger; }
+		// filter: remove empty strings, also path could start with '-'
+		var arDir = dir.split('-').filter(itm => itm);
+		// if more than '-' will proof suitable:
+		// var arDir = dir.split(/:|-/).filter(itm => itm);
+		// var arDir = dir.split(/:|%20|-|_/).filter(itm => itm);
+		// first/last "word" use to be an ID of an article, remove it
+		// todo: the first one was not tested
+		if (!isNaN(arDir[0])) { arDir.splice(0, 1); }
+		if (!isNaN(arDir[arDir.length - 1])) { arDir.splice(arDir.length - 1, 1); }
+		if (arDir.length <= 1) { continue; }
+		// if every item of arTitleFlat is in arDir
+		if (arTitleFlat.every((itm, idx) => itm === arDir[idx].toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, ""))) {
+			let arTitle = title.split(' ');
+			// slice: concat just part of the arDir which is not in title. Preserving parts of title with its case and diacritics.
+			return arTitle.concat(arDir.slice(arTitle.length)).join(' ');
+		}
+	}
+	return null;
+}
+
+
+// step through parents of el until <a> is found, return: [String]URL | null if no A with non-empty href found
 function getLinkFromParent(el) {
 	for (el = el.parentNode; el !== null; el = el.parentNode ) {
 		// console.log(el);
@@ -225,27 +279,62 @@ function getLinkFromParent(el) {
 	return el.href;
 }
 
-
 async function processTitle(elTitle) {
 	if (elTitle.dataset.frtTitle !== undefined) { return; }
-	if (DEBUG) { console.log('[Google-full-result-titles.js] *** new entry', elTitle); }
-	injectPanel(elTitle);
+	if (LOG) { console.log('[Google-full-result-titles.js] *** new entry', elTitle); }
+
+	// -- Button
+	// todo will show buttons or not based on Options
+	// if (XXX) {
+		// create parent element for the CPPanel; code for location and positioning is in this file as it's web page specific
+		// var hookLoc = elTitle.parentNode.parentNode.parentNode.querySelector('[id^="atritem-"] > div');
+		var elHookLoc = elTitle.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+		var elCPParent = document.createElement('DIV');
+		if (DEBUG == 1) { debugger; }
+		elCPParent.style = `
+			top: 0;
+			position: absolute;
+			left: ` + getComputedStyle(elHookLoc).width + ';';
+
+		var panel = CPPanel.create(elCPParent, 'infopanel', true);
+
+		// CPControl.create(elTitle.textContent, 'paragraph', panel);
+		new CPControl(elTitle.textContent, 'paragraph', panel);
+		// panel.add(elTitle.textContent, 'paragraph');
+		panel.addItem("Show buttons next to each Google result which will open this popup", 'button', true, evt => {
+			if (DEBUG == 1) { debugger; }
+		});
+
+		elHookLoc.appendChild(elCPParent);
+	// }
+
+	// even when title does not contain ellipses
+	// todo change below `getLinkFromParent(elTitle)` to url
+	var url = getLinkFromParent(elTitle);
+	var titleFromURL = getTitleFromURL(url, elTitle);
+			if (DEBUG == 6) { debugger; }
+	panel.addItem('titleFromURL: ' + titleFromURL, 'paragraph');
+	// title is complete; todo: maybe later this script will still proceed to process other info from target web site
 	if (!elTitle.textContent.endsWith('...')) { // sometimes there is no space before
 		elTitle.dataset.frtTitle = '';
-		if (DEBUG) { console.log('[Google-full-result-titles.js] ... no ellipses'); }
+		if (LOG) { console.log('[Google-full-result-titles.js] ... no ellipses'); }
 		// if (DEBUG) { console.groupEnd(); }
 		return null;
 	}
 	if (!GM_xmlhttpRequest) { throw 'no monkey'; } // later will add regular XHR for an extension
+
+	// GM supports stream
 	if (GM_xmlhttpRequest.RESPONSE_TYPE_STREAM) { funXHR = getTitle_stream;
 	} else { funXHR = getTitle_GM; }
 	var title = await funXHR(getLinkFromParent(elTitle)).catch(msg => {
+		if (DEBUG == 2) { debugger; }
 		if (!msg.m) { debugger; console.error(msg); }  // jshint ignore:line
 		elTitle.dataset.frtTitle = 'ERROR: ' + msg.m;
 		// can also return here, but not throw, as it's not an error.
 	});
+	if (DEBUG == 2) { debugger; }
 	if (title === undefined) { return; }
-	if (DEBUG) { console.log('[Google-full-result-titles.js] setting title from:', elTitle.textContent, ' to ', title, ' on ', elTitle); }
+	if (LOG) { console.log('[Google-full-result-titles.js] setting title from:', elTitle.textContent, ' to ', title, ' on ', elTitle); }
 	// todo: check if the obtained title is sane
 	elTitle.dataset.frtTitle = title;
 	elTitle.textContent = title;
