@@ -3,7 +3,7 @@
 // @namespace      https://github.com/paponius/
 // @description    Google-enhancer
 // @author         papo
-// @version        1.1.0
+// @version        1.1.1
 // @license        CC-BY-SA-4.0
 // @icon           https://www.google.com/s2/favicons?sz=64&domain=google.com
 
